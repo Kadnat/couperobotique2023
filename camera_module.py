@@ -1,0 +1,65 @@
+import cv2
+import numpy as np
+
+# Charger le dictionnaire ArUco
+aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_100)
+
+# Initialiser le détecteur de paramètres ArUco
+parameters =  cv2.aruco.DetectorParameters_create()
+
+# Taille des marqueurs ArUco de référence (en mètres)
+marker_size = 0.1
+
+# Paramètres intrinsèques de la caméra (à remplacer par vos valeurs)
+camera_matrix = np.array([[800, 0, 960], [0, 800, 540], [0, 0, 1]])
+dist_coeffs = np.zeros((4,1))
+
+# Positions des marqueurs ArUco de référence dans le référentiel de l'arène de jeu
+reference_markers = {
+    20: np.array([500, 750, 0]),
+    21: np.array([500, -750, 0]),
+    22: np.array([-500, 750, 0]),
+    23: np.array([-500, -750, 0])
+}
+
+def detect_aruco(frame):
+    # Convertir l'image en niveaux de gris
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+
+    # Détecter les marqueurs ArUco
+    corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
+
+    # Estimer la pose des marqueurs ArUco
+    rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners, marker_size, camera_matrix, dist_coeffs)
+
+    # Calculer la pose des marqueurs dans le référentiel de l'arène de jeu
+    marker_poses = {}
+    if ids is not None:
+        for i in range(len(ids)):
+            # Obtenir la transformation du référentiel de la caméra au référentiel du marqueur
+            R_marker, _ = cv2.Rodrigues(rvecs[i])
+            T_marker = tvecs[i]
+            M_marker = np.block([[R_marker, T_marker.T], [0, 0, 0, 1]])
+
+            if ids[i] in reference_markers:
+                # Obtenir la transformation du référentiel de l'arène de jeu au référentiel du marqueur
+                T_arena = reference_markers[ids[i]]
+                R_arena = np.eye(3)  # suppose que le marqueur n'est pas orienté
+                M_arena = np.block([[R_arena, T_arena.T], [0, 0, 0, 1]])
+
+                # Calculer la transformation du référentiel de la caméra au référentiel de l'arène de jeu
+                M_camera_to_arena = np.linalg.inv(M_marker) @ M_arena
+            else:
+                # Calculer la transformation du référentiel du marqueur au référentiel de l'arène de jeu
+                M_marker_to_arena = M_camera_to_arena @ M_marker
+
+                # La pose du marqueur dans le référentiel de l'arène de jeu est la translation de cette transformation
+                marker_pose = M_marker_to_arena[:3, 3]
+                marker_poses[ids[i]] = marker_pose
+
+                # Calculer et afficher la distance entre le marqueur détecté et chaque marqueur de référence
+                for ref_id, ref_pose in reference_markers.items():
+                    distance = np.linalg.norm(marker_pose - ref_pose)
+                    print(f"Distance from marker {ids[i]} to reference marker {ref_id}: {distance} mm")
+
+    return marker_poses
