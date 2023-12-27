@@ -10,9 +10,9 @@ parameters =  cv2.aruco.DetectorParameters_create()
 # Taille des marqueurs ArUco de référence (en mètres)
 marker_size = 0.1
 
-# Paramètres intrinsèques de la caméra (à remplacer par vos valeurs)
-camera_matrix = np.array([[800, 0, 960], [0, 800, 540], [0, 0, 1]])
-dist_coeffs = np.zeros((4,1))
+# Charger les paramètres intrinsèques de la caméra et les coefficients de distorsion à partir du fichier .npz
+with np.load('calibration_charuco.npz') as X:
+    camera_matrix, dist_coeffs, _, _ = [X[i] for i in ('mtx','dist','rvecs','tvecs')]
 
 # Positions des marqueurs ArUco de référence dans le référentiel de l'arène de jeu
 reference_markers = {
@@ -63,3 +63,30 @@ def detect_aruco(frame):
                     print(f"Distance from marker {ids[i]} to reference marker {ref_id}: {distance} mm")
 
     return marker_poses
+
+# Créer une fenêtre de la taille de l'écran
+cv2.namedWindow('Distances', cv2.WINDOW_NORMAL)
+cv2.setWindowProperty('Distances', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+# Ouvrir le flux vidéo de la caméra
+cap = cv2.VideoCapture(0)
+
+while True:
+    # Lire une image du flux vidéo
+    ret, frame = cap.read()
+
+    # Détecter les marqueurs ArUco
+    marker_poses = detect_aruco(frame)
+
+    # Afficher l'image avec les distances
+    cv2.imshow('Distances', frame)
+
+    # Si 'q' est pressé sur le clavier, arrêter la boucle
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+# Libérer le flux vidéo
+cap.release()
+
+# Fermer toutes les fenêtres OpenCV
+cv2.destroyAllWindows()

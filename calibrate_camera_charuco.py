@@ -24,23 +24,27 @@ all_charuco_ids = []
 for filename in os.listdir(image_dir):
     # Lire chaque image
     frame = cv2.imread(os.path.join(image_dir, filename))
-    # Convertir l'image en niveaux de gris
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # Détecter les marqueurs ArUco dans l'image
-    corners, ids, _ = aruco.detectMarkers(gray, aruco_dict)
-    # Si au moins un marqueur a été détecté
-    if len(corners) > 0:
-        # Interpoler les coins Charuco
-        res2 = cv2.aruco.interpolateCornersCharuco(corners, ids, gray, charuco_board)
-        if res2[1] is not None and res2[2] is not None and len(res2[1]) > 3 and res2[2].size > 3:
-            all_charuco_corners.append(res2[1])
-            all_charuco_ids.append(res2[2])
+    # Vérifier si l'image a été lue correctement
+    if frame is not None:
+        # Convertir l'image en niveaux de gris
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # Détecter les marqueurs ArUco dans l'image
+        corners, ids, _ = aruco.detectMarkers(gray, aruco_dict)
+        # Si au moins un marqueur a été détecté
+        if len(corners) > 0:
+            # Interpoler les coins Charuco
+            res2 = cv2.aruco.interpolateCornersCharuco(corners, ids, gray, charuco_board)
+            if res2[1] is not None and res2[2] is not None and len(res2[1]) > 3 and res2[2].size > 3:
+                all_charuco_corners.append(res2[1])
+                all_charuco_ids.append(res2[2])
 
-    # Afficher l'image en cours de traitement
-    cv2.imshow('Image en cours de traitement', frame)
-    # Si 'q' est pressé sur le clavier, arrêter la boucle
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        # Afficher l'image en cours de traitement
+        cv2.imshow('Image en cours de traitement', frame)
+        # Si 'q' est pressé sur le clavier, arrêter la boucle
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+    else:
+        print(f"L'image {filename} n'a pas pu être lue.")
 
 # Fermer toutes les fenêtres OpenCV
 cv2.destroyAllWindows()
