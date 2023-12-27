@@ -61,12 +61,12 @@ def detect_aruco(frame):
                 for ref_id, ref_pose in reference_markers.items():
                     distance = np.linalg.norm(marker_pose - ref_pose)
                     print(f"Distance from marker {ids[i]} to reference marker {ref_id}: {distance} mm")
+                    cv2.putText(frame, f"Distance from marker {ids[i]} to reference marker {ref_id}: {distance} mm", (10, 30 + 30 * i), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
     return marker_poses
 
-# Créer une fenêtre de la taille de l'écran
+# Créer une fenêtre
 cv2.namedWindow('Distances', cv2.WINDOW_NORMAL)
-cv2.setWindowProperty('Distances', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
 # Ouvrir le flux vidéo de la caméra
 cap = cv2.VideoCapture(0)
@@ -77,6 +77,9 @@ while True:
 
     # Détecter les marqueurs ArUco
     marker_poses = detect_aruco(frame)
+
+    # Redimensionner la fenêtre à la taille de l'écran
+    cv2.resizeWindow('Distances', 600, 600)
 
     # Afficher l'image avec les distances
     cv2.imshow('Distances', frame)
