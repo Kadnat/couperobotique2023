@@ -34,6 +34,7 @@ def detect_aruco(frame):
 
     # Calculer la pose des marqueurs dans le référentiel de l'arène de jeu
     marker_poses = {}
+    M_camera_to_arena = np.eye(4)  # Initialiser à la matrice d'identité
     if ids is not None:
         for i in range(len(ids)):
             # Obtenir la transformation du référentiel de la caméra au référentiel du marqueur
@@ -46,6 +47,7 @@ def detect_aruco(frame):
                 T_arena = reference_markers[int(ids[i][0])]
                 R_arena = np.eye(3)  # suppose que le marqueur n'est pas orienté
                 M_arena = np.block([[R_arena, np.reshape(T_arena, (3, 1))], [0, 0, 0, 1]])
+
                 # Calculer la transformation du référentiel de la caméra au référentiel de l'arène de jeu
                 M_camera_to_arena = np.linalg.inv(M_marker) @ M_arena
             else:
@@ -60,6 +62,12 @@ def detect_aruco(frame):
                 for ref_id, ref_pose in reference_markers.items():
                     distance = np.linalg.norm(marker_pose - ref_pose)
                     print(f"Distance from marker {int(ids[i][0])} to reference marker {ref_id}: {distance} mm")
+                    cv2.putText(frame, f"Distance from marker {int(ids[i][0])} to reference marker {ref_id}: {distance} mm", (10, 30 + 30 * i), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                    
+                    # Dessiner une ligne entre le marqueur détecté et le marqueur de référence
+                    if ref_id in ids:
+                        ref_index = np.where(ids == ref_id)[0][0]
+                        cv2.line(frame, tuple(corners[i][0][0].astype(int)), tuple(corners[ref_index][0][0].astype(int)), (0, 255, 0), 2)
 
     return marker_poses
 
@@ -91,4 +99,3 @@ cap.release()
 
 # Fermer toutes les fenêtres OpenCV
 cv2.destroyAllWindows()
-
