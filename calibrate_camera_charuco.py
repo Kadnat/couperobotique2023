@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import cv2.aruco as aruco
+import os
 
 # Créer le dictionnaire ArUco
 aruco_dict = aruco.Dictionary_get(aruco.DICT_4X4_100)
@@ -12,16 +13,17 @@ squares_x = 11 # Nombre de carrés en x
 squares_y = 8  # Nombre de carrés en y
 charuco_board = aruco.CharucoBoard_create(squares_x, squares_y, square_length, marker_length, aruco_dict)
 
-# Capturer la vidéo de la caméra
-cap = cv2.VideoCapture(0)
+# Utiliser le dossier actuel pour les images
+image_dir = '.'
 
 # Tableaux pour stocker les points d'objets et les points d'image de toutes les images.
 all_charuco_corners = []
 all_charuco_ids = []
 
-while(True):
-    # Lire chaque image de la vidéo
-    ret, frame = cap.read()
+# Parcourir toutes les images dans le dossier spécifié
+for filename in os.listdir(image_dir):
+    # Lire chaque image
+    frame = cv2.imread(os.path.join(image_dir, filename))
     # Convertir l'image en niveaux de gris
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     # Détecter les marqueurs ArUco dans l'image
@@ -34,14 +36,12 @@ while(True):
             all_charuco_corners.append(res2[1])
             all_charuco_ids.append(res2[2])
 
-    # Afficher l'image
-    cv2.imshow('frame',frame)
+    # Afficher l'image en cours de traitement
+    cv2.imshow('Image en cours de traitement', frame)
     # Si 'q' est pressé sur le clavier, arrêter la boucle
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
 
-# Libérer la capture vidéo
-cap.release()
 # Fermer toutes les fenêtres OpenCV
 cv2.destroyAllWindows()
 
