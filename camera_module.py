@@ -41,12 +41,11 @@ def detect_aruco(frame):
             T_marker = tvecs[i]
             M_marker = np.block([[R_marker, T_marker.T], [0, 0, 0, 1]])
 
-            if ids[i] in reference_markers:
+            if int(ids[i][0]) in reference_markers:
                 # Obtenir la transformation du référentiel de l'arène de jeu au référentiel du marqueur
-                T_arena = reference_markers[ids[i]]
+                T_arena = reference_markers[int(ids[i][0])]
                 R_arena = np.eye(3)  # suppose que le marqueur n'est pas orienté
-                M_arena = np.block([[R_arena, T_arena.T], [0, 0, 0, 1]])
-
+                M_arena = np.block([[R_arena, np.reshape(T_arena, (3, 1))], [0, 0, 0, 1]])
                 # Calculer la transformation du référentiel de la caméra au référentiel de l'arène de jeu
                 M_camera_to_arena = np.linalg.inv(M_marker) @ M_arena
             else:
@@ -55,13 +54,12 @@ def detect_aruco(frame):
 
                 # La pose du marqueur dans le référentiel de l'arène de jeu est la translation de cette transformation
                 marker_pose = M_marker_to_arena[:3, 3]
-                marker_poses[ids[i]] = marker_pose
+                marker_poses[int(ids[i][0])] = marker_pose
 
                 # Calculer et afficher la distance entre le marqueur détecté et chaque marqueur de référence
                 for ref_id, ref_pose in reference_markers.items():
                     distance = np.linalg.norm(marker_pose - ref_pose)
-                    print(f"Distance from marker {ids[i]} to reference marker {ref_id}: {distance} mm")
-                    cv2.putText(frame, f"Distance from marker {ids[i]} to reference marker {ref_id}: {distance} mm", (10, 30 + 30 * i), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
+                    print(f"Distance from marker {int(ids[i][0])} to reference marker {ref_id}: {distance} mm")
 
     return marker_poses
 
@@ -93,3 +91,4 @@ cap.release()
 
 # Fermer toutes les fenêtres OpenCV
 cv2.destroyAllWindows()
+
