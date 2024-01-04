@@ -1,101 +1,81 @@
+# Importation des bibliothèques nécessaires
 import cv2
+import cv2.aruco as aruco
 import numpy as np
+from scipy.spatial.transform import Rotation as R
 
-# Charger le dictionnaire ArUco
-aruco_dict = cv2.aruco.Dictionary_get(cv2.aruco.DICT_4X4_100)
+# Chargement des paramètres de calibration de la caméra
+with open('camera_cal.npy', 'rb') as f:
+    camera_matrix = np.load(f)
+    camera_distortion = np.load(f)
 
-# Initialiser le détecteur de paramètres ArUco
-parameters =  cv2.aruco.DetectorParameters_create()
+# Définition de la taille du marqueur ArUco en mètres
+markerLength = 0.03
 
-# Taille des marqueurs ArUco de référence (en mètres)
-marker_size = 0.1
+# Création du dictionnaire ArUco et des paramètres de détection
+aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
+parameters = aruco.DetectorParameters()
 
-# Charger les paramètres intrinsèques de la caméra et les coefficients de distorsion à partir du fichier .npz
-with np.load('calibration_charuco.npz') as X:
-    camera_matrix, dist_coeffs, _, _ = [X[i] for i in ('mtx','dist','rvecs','tvecs')]
+# Lecture de l'image
+frame = cv2.imread('image16cm_0001.jpg')
 
-# Positions des marqueurs ArUco de référence dans le référentiel de l'arène de jeu
+# Détection des marqueurs ArUco dans l'image
+corners, ids, rejectedImgPoints = aruco.detectMarkers(frame, aruco_dict, parameters=parameters)
+
+# Définition des positions de référence des marqueurs dans le monde réel
 reference_markers = {
-    20: np.array([500, 750, 0]),
-    21: np.array([500, -750, 0]),
-    22: np.array([-500, 750, 0]),
-    23: np.array([-500, -750, 0])
+    20: np.array([160, 160, 0]),
+    21: np.array([160, -160, 0]),
+    22: np.array([-160, 160, 0]),
+    23: np.array([-160, -160, 0])
 }
 
-def detect_aruco(frame):
-    # Convertir l'image en niveaux de gris
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+# Si au moins un marqueur a été détecté
+if len(corners) > 0:
+    # Estimation de la pose des marqueurs
+    rvecs, tvecs, _objPoints = aruco.estimatePoseSingleMarkers(corners, markerLength, camera_matrix, camera_distortion)
+    
+    # Initialisation des listes pour stocker les positions des marqueurs dans le monde réel et dans le système de coordonnées de la caméra
+    world_positions = []
+    camera_positions = []
+    
+    # Pour chaque marqueur détecté
+    for i in range(len(ids)):
+        # Si le marqueur est un marqueur de référence
+        if ids[i][0] in reference_markers:
+            # Ajout de la position du marqueur dans le monde réel et dans le système de coordonnées de la caméra aux listes correspondantes
+            world_positions.append(reference_markers[ids[i][0]])
+            camera_positions.append(tvecs[i][0])
+    
+    # Conversion des listes en tableaux numpy pour le calcul ultérieur
+    world_positions = np.array(world_positions)
+    camera_positions = np.array(camera_positions)
+    
+    # Calcul de la transformation affine entre le système de coordonnées de la caméra et le système de coordonnées du monde réel
+    transformation = np.linalg.lstsq(camera_positions, world_positions, rcond=None)[0]
+    
+    # Pour chaque marqueur détecté
+    for i in range(len(ids)):
+        # Calcul de la position du centre du marqueur dans l'image
+        c = corners[i][0]
+        x = int((c[0, 0] + c[2, 0]) / 2)
+        y = int((c[0, 1] + c[2, 1]) / 2)
+        
+        # Calcul de la position du marqueur dans le monde réel en utilisant la transformation
+        real_world_position = np.dot(tvecs[i][0], transformation)
+        
+        # Affichage de l'ID du marqueur et de sa position dans le monde réel sur l'image
+        cv2.putText(frame, "ID: {} Pos: ({:.2f}, {:.2f}, {:.2f})".format(ids[i][0], real_world_position[0], real_world_position[1], real_world_position[2]), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2, cv2.LINE_AA)
+        
+         # Affichage de l'ID du marqueur et de sa position dans le monde réel dans la console
+        print("ID: {} Real World Position: ({:.2f}, {:.2f}, {:.2f})".format(ids[i][0], real_world_position[0], real_world_position[1], real_world_position[2]))
+        
+        # Dessin des marqueurs détectés sur l'image
+        aruco.drawDetectedMarkers(frame, corners)
 
-    # Détecter les marqueurs ArUco
-    corners, ids, _ = cv2.aruco.detectMarkers(gray, aruco_dict, parameters=parameters)
-
-    # Estimer la pose des marqueurs ArUco
-    rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners, marker_size, camera_matrix, dist_coeffs)
-
-    # Calculer la pose des marqueurs dans le référentiel de l'arène de jeu
-    marker_poses = {}
-    M_camera_to_arena = np.eye(4)  # Initialiser à la matrice d'identité
-    if ids is not None:
-        for i in range(len(ids)):
-            # Obtenir la transformation du référentiel de la caméra au référentiel du marqueur
-            R_marker, _ = cv2.Rodrigues(rvecs[i])
-            T_marker = tvecs[i]
-            M_marker = np.block([[R_marker, T_marker.T], [0, 0, 0, 1]])
-
-            if int(ids[i][0]) in reference_markers:
-                # Obtenir la transformation du référentiel de l'arène de jeu au référentiel du marqueur
-                T_arena = reference_markers[int(ids[i][0])]
-                R_arena = np.eye(3)  # suppose que le marqueur n'est pas orienté
-                M_arena = np.block([[R_arena, np.reshape(T_arena, (3, 1))], [0, 0, 0, 1]])
-
-                # Calculer la transformation du référentiel de la caméra au référentiel de l'arène de jeu
-                M_camera_to_arena = np.linalg.inv(M_marker) @ M_arena
-            else:
-                # Calculer la transformation du référentiel du marqueur au référentiel de l'arène de jeu
-                M_marker_to_arena = M_camera_to_arena @ M_marker
-
-                # La pose du marqueur dans le référentiel de l'arène de jeu est la translation de cette transformation
-                marker_pose = M_marker_to_arena[:3, 3]
-                marker_poses[int(ids[i][0])] = marker_pose
-
-                # Calculer et afficher la distance entre le marqueur détecté et chaque marqueur de référence
-                for ref_id, ref_pose in reference_markers.items():
-                    distance = np.linalg.norm(marker_pose - ref_pose)
-                    print(f"Distance from marker {int(ids[i][0])} to reference marker {ref_id}: {distance} mm")
-                    cv2.putText(frame, f"Distance from marker {int(ids[i][0])} to reference marker {ref_id}: {distance} mm", (10, 30 + 30 * i), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                    
-                    # Dessiner une ligne entre le marqueur détecté et le marqueur de référence
-                    if ref_id in ids:
-                        ref_index = np.where(ids == ref_id)[0][0]
-                        cv2.line(frame, tuple(corners[i][0][0].astype(int)), tuple(corners[ref_index][0][0].astype(int)), (0, 255, 0), 2)
-
-    return marker_poses
-
-# Créer une fenêtre
-cv2.namedWindow('Distances', cv2.WINDOW_NORMAL)
-
-# Ouvrir le flux vidéo de la caméra
-cap = cv2.VideoCapture(0)
-
-while True:
-    # Lire une image du flux vidéo
-    ret, frame = cap.read()
-
-    # Détecter les marqueurs ArUco
-    marker_poses = detect_aruco(frame)
-
-    # Redimensionner la fenêtre à la taille de l'écran
-    cv2.resizeWindow('Distances', 600, 600)
-
-    # Afficher l'image avec les distances
-    cv2.imshow('Distances', frame)
-
-    # Si 'q' est pressé sur le clavier, arrêter la boucle
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
-
-# Libérer le flux vidéo
-cap.release()
-
-# Fermer toutes les fenêtres OpenCV
+# Affichage de l'image
+cv2.namedWindow('frame', cv2.WINDOW_NORMAL)
+cv2.resizeWindow('frame', 1920, 1080)
+cv2.imshow('frame', frame)
+cv2.waitKey(0)
 cv2.destroyAllWindows()
