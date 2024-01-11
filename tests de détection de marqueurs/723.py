@@ -2,7 +2,7 @@ import cv2
 import cv2.aruco as aruco
 import numpy as np
 
-with open('camera_cal.npy', 'rb') as f:
+with open('../calibration/camera_cal.npy', 'rb') as f:
     camera_matrix = np.load(f)
     camera_distortion = np.load(f)
 

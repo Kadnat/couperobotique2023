@@ -5,29 +5,28 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 
 # Chargement des paramètres de calibration de la caméra
-with open('camera_cal.npy', 'rb') as f:
+with open('calibration\camera_cal.npy', 'rb') as f:
     camera_matrix = np.load(f)
     camera_distortion = np.load(f)
 
 # Définition de la taille du marqueur ArUco en mètres
-markerLength = 0.03
+markerLength = 0.1
 
 # Création du dictionnaire ArUco et des paramètres de détection
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
 parameters = aruco.DetectorParameters()
-
 # Lecture de l'image
-frame = cv2.imread('image16cm_0001.jpg')
+frame = cv2.imread('photos\image2592lumiere_0000.jpg')
 
 # Détection des marqueurs ArUco dans l'image
 corners, ids, rejectedImgPoints = aruco.detectMarkers(frame, aruco_dict, parameters=parameters)
 
 # Définition des positions de référence des marqueurs dans le monde réel
 reference_markers = {
-    20: np.array([160, 160, 0]),
-    21: np.array([160, -160, 0]),
-    22: np.array([-160, 160, 0]),
-    23: np.array([-160, -160, 0])
+    20: np.array([500, 750, 0]),
+    21: np.array([500, -750, 0]),
+    22: np.array([-500, 750, 0]),
+    23: np.array([-500, -750, 0])
 }
 
 # Si au moins un marqueur a été détecté
