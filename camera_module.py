@@ -1,4 +1,3 @@
-# Importation des bibliothèques nécessaires
 import cv2
 import cv2.aruco as aruco
 import numpy as np
@@ -10,13 +9,27 @@ with open('calibration\camera_cal.npy', 'rb') as f:
     camera_distortion = np.load(f)
 
 # Définition de la taille du marqueur ArUco en mètres
-markerLength = 0.1
+markerLengths = {
+    47:0.03,
+    13:0.03,
+    22:0.1,
+    21:0.1,
+    20:0.1,
+    23:0.1,
+    4:0.1,
+    7:0.1,
+}
+
+# Normalisation de la taille des marqueurs
+max_marker_length = max(markerLengths.values())
+markerLengths = {id: size / max_marker_length for id, size in markerLengths.items()}
 
 # Création du dictionnaire ArUco et des paramètres de détection
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
 parameters = aruco.DetectorParameters()
+
 # Lecture de l'image
-frame = cv2.imread('photos\image2592lumiere_0000.jpg')
+frame = cv2.imread('photos\image2592lumiere_0003.jpg')
 
 # Détection des marqueurs ArUco dans l'image
 corners, ids, rejectedImgPoints = aruco.detectMarkers(frame, aruco_dict, parameters=parameters)
@@ -31,15 +44,16 @@ reference_markers = {
 
 # Si au moins un marqueur a été détecté
 if len(corners) > 0:
-    # Estimation de la pose des marqueurs
-    rvecs, tvecs, _objPoints = aruco.estimatePoseSingleMarkers(corners, markerLength, camera_matrix, camera_distortion)
-    
     # Initialisation des listes pour stocker les positions des marqueurs dans le monde réel et dans le système de coordonnées de la caméra
     world_positions = []
     camera_positions = []
     
     # Pour chaque marqueur détecté
     for i in range(len(ids)):
+        markerLength = markerLengths[ids[i][0]]
+
+        # Estimation de la pose des marqueurs
+        rvecs, tvecs, _objPoints = aruco.estimatePoseSingleMarkers(corners, markerLength, camera_matrix, camera_distortion)
         # Si le marqueur est un marqueur de référence
         if ids[i][0] in reference_markers:
             # Ajout de la position du marqueur dans le monde réel et dans le système de coordonnées de la caméra aux listes correspondantes
