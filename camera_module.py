@@ -69,14 +69,17 @@ if len(corners) > 0:
     
     # Pour chaque marqueur détecté
     for i in range(len(ids)):
+        marker_coeff= markerLengths[ids[i][0]] / min(markerLengths.values())
+
         # Calcul de la position du centre du marqueur dans l'image
         c = corners[i][0]
-        x = int((c[0, 0] + c[2, 0]) / 2)
-        y = int((c[0, 1] + c[2, 1]) / 2)
+        x = int((c[0, 0] + c[2, 0]) / 2)#*marker_coeff
+        y = int((c[0, 1] + c[2, 1]) / 2)#*marker_coeff
         
         # Calcul de la position du marqueur dans le monde réel en utilisant la transformation
-        real_world_position = np.dot(tvecs[i][0], transformation)
-        
+        real_world_position_before_normalization = np.dot(tvecs[i][0], transformation)
+        real_world_position = real_world_position_before_normalization*marker_coeff
+
         # Affichage de l'ID du marqueur et de sa position dans le monde réel sur l'image
         cv2.putText(frame, "ID: {} Pos: ({:.2f}, {:.2f}, {:.2f})".format(ids[i][0], real_world_position[0], real_world_position[1], real_world_position[2]), (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,255,0), 2, cv2.LINE_AA)
         
