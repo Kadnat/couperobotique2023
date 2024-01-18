@@ -29,7 +29,7 @@ aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_4X4_250)
 parameters = aruco.DetectorParameters()
 
 # Lecture de l'image
-frame = cv2.imread('photos\image2592lumiere_0003.jpg')
+frame = cv2.imread('photos\image2592lumiere2_0000.jpg')
 
 # Détection des marqueurs ArUco dans l'image
 corners, ids, rejectedImgPoints = aruco.detectMarkers(frame, aruco_dict, parameters=parameters)
@@ -73,8 +73,8 @@ if len(corners) > 0:
 
         # Calcul de la position du centre du marqueur dans l'image
         c = corners[i][0]
-        x = int((c[0, 0] + c[2, 0]) / 2)#*marker_coeff
-        y = int((c[0, 1] + c[2, 1]) / 2)#*marker_coeff
+        x = int((c[0, 0] + c[2, 0]) / 2)
+        y = int((c[0, 1] + c[2, 1]) / 2)
         
         # Calcul de la position du marqueur dans le monde réel en utilisant la transformation
         real_world_position_before_normalization = np.dot(tvecs[i][0], transformation)
